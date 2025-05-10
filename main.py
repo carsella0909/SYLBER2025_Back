@@ -35,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sio = AsyncServer(async_mode='asgi', cors_allowed_origins=origins, ping_timeout=60)
+sio = AsyncServer(async_mode='asgi', cors_allowed_origins=origins, ping_timeout=60, logger=True, engineio_logger=True)
 game_namespace = GameNamespace('/game')
 sio.register_namespace(game_namespace)
 sio_app = ASGIApp(sio, app)

@@ -32,6 +32,7 @@ class RoomUser(Base):
     user = relationship("User", backref="room_users")
     is_connected = Column(Boolean, nullable=False, default=True)
     entered_at = Column(TIMESTAMP, nullable=False, default = current_timestamp())
+    sid = Column(String, nullable=True)
     # use (room_id, user_id) as primary key
     __table_args__ = (
         PrimaryKeyConstraint('room_id', 'user_id'),
@@ -56,7 +57,8 @@ class Room(Base):
             room_id=self.id,
             user_id=user.id,
             is_connected=True,
-            entered_at=current_timestamp()
+            entered_at=current_timestamp(),
+            sid = None,
         )
         session.add(room_user)
         session.commit()
