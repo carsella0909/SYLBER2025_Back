@@ -146,3 +146,9 @@ class GameNamespace(AsyncNamespace):
             # 방을 나간 것이 아님
             self.is_connected = False
             session.commit()
+
+    async def on_text(self, sid, data):
+        ...
+
+    async  def on_image(self, sid, data):
+        ...
