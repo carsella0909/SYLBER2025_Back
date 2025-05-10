@@ -100,6 +100,7 @@ class Game(Base):
 class Round(Base):
     __tablename__ = "rounds"
 
+    id = Column(Integer, primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
     game = relationship("Game", backref="rounds")
     round = Column(Integer, nullable=False)
