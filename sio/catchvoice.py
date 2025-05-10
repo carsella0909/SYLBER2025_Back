@@ -70,7 +70,6 @@ class CatchVoice:
         # Wait for the timeout
         await asyncio.sleep(timeout)
 
-
 class CatchVoiceRound:
     def __init__(self, game: CatchVoice, round_number: int):
         self.game = game

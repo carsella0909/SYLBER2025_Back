@@ -170,7 +170,6 @@ class GameNamespace(AsyncNamespace):
         game = session.query(Game).filter(Game.room_id == room.id).order_by(Game.started_at.desc()).first()
         if not game:
             return
-
         catchvoice = self.games.get(game.id)
 
         return catchvoice.rounds[-1]
