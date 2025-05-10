@@ -1,3 +1,4 @@
+from datetime import timedelta, datetime
 from json import loads
 
 from fastapi import HTTPException
@@ -93,18 +94,30 @@ class Game(Base):
     room = relationship("Room", backref="games")
     started_at = Column(TIMESTAMP, nullable=False, default = current_timestamp())
     time_limit = Column(Integer, nullable=False, default=30)
+    current_round = Column(Integer, nullable=False, default=0)
+
+
+class Round(Base):
+    __tablename__ = "rounds"
+
+    game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
+    game = relationship("Game", backref="rounds")
+    round = Column(Integer, nullable=False)
+    type = Column(String, nullable=False)
+    started_at = Column(TIMESTAMP, nullable=False, default=current_timestamp())
+
+    def is_ended(self):
+        # Check if the round is ended
+        return self.started_at + timedelta(seconds=self.game.time_limit) < datetime.now()
 
 
 class Content(Base):
     __tablename__ = "contents"
 
-    game_id = Column(Integer, ForeignKey("games.id"))
-    game = relationship("Game", backref="contents")
     user_id = Column(UUID, ForeignKey("users.id"))
     user = relationship("User", backref="contents")
     round = Column(Integer, nullable=False)
-    type = Column(String, nullable=False)
     content = Column(String, nullable=False)
     __table_args__ = (
-        PrimaryKeyConstraint('game_id', 'user_id', 'round'),
+        PrimaryKeyConstraint('user_id', 'round'),
     )
