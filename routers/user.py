@@ -58,6 +58,7 @@ async def create_user(username: str, password: str):
         session.commit()
         session.refresh(user)
     except Exception as e:
+        print(e)
         session.rollback()
         raise HTTPException(status_code=400, detail="name already exists")
     return {"message": "User created successfully"}

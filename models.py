@@ -18,6 +18,6 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID, primary_key=True, index=True)
+    id = Column(UUID, primary_key=True, index=True, server_default="uuid_generate_v4()")
     username = Column(String, unique=True, index=True)
     password = Column(String, nullable=False)
