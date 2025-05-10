@@ -1,0 +1,12 @@
+{
+  "host": "0.0.0.0",
+  "port": 8000,
+  "jwt": {
+    "SECRET_KEY": "iamsonjeongbucks",
+    "ALGORITHM": "HS256",
+    "ACCESS_TOKEN_EXPIRE_MINUTES": 30
+  },
+  "database": {
+    "url": "postgresql://test:test@localhost/postgres"
+  }
+}
