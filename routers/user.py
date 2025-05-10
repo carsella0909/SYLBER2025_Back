@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer
 
 from auth.token import create_token, get_user, get_user_by_name
-from models import User, session
+from models import User, session, RoomUser, Room
 
 security = HTTPBearer()
 
@@ -16,8 +16,11 @@ router = APIRouter(
 
 @router.get("/me")
 async def read_users_me(user: Annotated[User, Depends(get_user)]):
+    roomuser = session.query(RoomUser).filter(RoomUser.user_id == user.id).first()
+    room = session.query(Room).filter(Room.id == roomuser.room_id).first() if roomuser else None
     return {
         "username": user.username,
+        "room_code": room.code if roomuser else None,
     }
 
 @router.put("/")

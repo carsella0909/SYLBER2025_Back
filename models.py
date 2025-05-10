@@ -52,13 +52,13 @@ class Room(Base):
     created_at = Column(TIMESTAMP, nullable=False, default=current_timestamp())
 
     #join user in room
-    def join(self, user):
+    def join(self, user, sid=None):
         room_user = RoomUser(
             room_id=self.id,
             user_id=user.id,
             is_connected=True,
             entered_at=current_timestamp(),
-            sid = None,
+            sid = sid,
         )
         session.add(room_user)
         session.commit()
