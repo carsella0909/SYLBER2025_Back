@@ -18,6 +18,7 @@ app = FastAPI()
 # Allow CORS for all origins
 origins = [
     "http://localhost:5173",
+    "http://192.168.175.162:5173"
 ]
 
 # noinspection PyTypeChecker

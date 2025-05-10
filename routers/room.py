@@ -32,7 +32,7 @@ async def create_room(user: Annotated[User, Depends(get_user)],
     room = Room(
         max_users=max_users,
         code=code,
-        is_active=True,
+        status = "active",
         host_id=user.id,
     )
     session.add(room)
@@ -43,7 +43,7 @@ async def create_room(user: Annotated[User, Depends(get_user)],
         "id": room.id,
         "max_users": room.max_users,
         "code": room.code,
-        "is_active": room.is_active,
+        "status": room.status,
         "created_at": room.created_at,
         "host_id": room.host_id,
     }
@@ -53,8 +53,10 @@ async def get_room(code: str):
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    if not room.is_active:
+    if room.status == "inactive":
         raise HTTPException(status_code=400, detail="Room is not active")
+    if room.status == "playing":
+        raise HTTPException(status_code=400, detail="Room is already playing")
     # return users in room with sort by entered_at
     users = session.query(User).filter(User.id == RoomUser.user_id).filter(RoomUser.room_id == room.id).order_by(RoomUser.entered_at).all()
     if not users:
@@ -63,7 +65,7 @@ async def get_room(code: str):
         "id": room.id,
         "max_users": room.max_users,
         "code": room.code,
-        "is_active": room.is_active,
+        "status": room.status,
         "created_at": room.created_at,
         "host_id": room.host_id,
         "users": [
@@ -81,8 +83,10 @@ async def join_room(user: Annotated[User, Depends(get_user)],
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    if not room.is_active:
+    if room.status == "inactive":
         raise HTTPException(status_code=400, detail="Room is not active")
+    if room.status == "playing":
+        raise HTTPException(status_code=400, detail="Room is already playing")
     # check if user is already in any room
     roomuser = session.query(RoomUser).filter(RoomUser.user_id == user.id).first()
     if roomuser:
@@ -94,7 +98,7 @@ async def join_room(user: Annotated[User, Depends(get_user)],
         "id": room.id,
         "max_users": room.max_users,
         "code": room.code,
-        "is_active": room.is_active,
+        "status": room.status,
         "created_at": room.created_at,
         "host_id": room.host_id,
     }
@@ -105,8 +109,10 @@ async def leave_room(user: Annotated[User, Depends(get_user)],
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    if not room.is_active:
+    if room.status == "inactive":
         raise HTTPException(status_code=400, detail="Room is not active")
+    if room.status == "playing":
+        raise HTTPException(status_code=400, detail="Room is already playing")
     if user.id == room.host_id:
         room.delete()
     else:
@@ -119,7 +125,7 @@ async def leave_room(user: Annotated[User, Depends(get_user)],
         "id": room.id,
         "max_users": room.max_users,
         "code": room.code,
-        "is_active": room.is_active,
+        "status": room.status,
         "created_at": room.created_at,
         "host_id": room.host_id,
     }

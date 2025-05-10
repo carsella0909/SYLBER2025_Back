@@ -44,7 +44,8 @@ class Room(Base):
     id = Column(Integer, primary_key=True, index=True)
     max_users = Column(Integer, nullable=False, default=8)
     code = Column(String, nullable=False)
-    is_active = Column(Boolean, nullable=False, default=True)
+    # make status which is in {active, playing, inactive}
+    status = Column(String, nullable=False, default="active")
     host_id = Column(UUID, ForeignKey("users.id"))
     host = relationship("User", backref="rooms")
     created_at = Column(TIMESTAMP, nullable=False, default=current_timestamp())
@@ -62,7 +63,7 @@ class Room(Base):
 
     #delete room and all roomuser pairs
     def delete(self):
-        self.is_active = False
+        self.status = "inactive"
         session.query(RoomUser).filter(RoomUser.room_id == self.id).delete()
         session.commit()
 
