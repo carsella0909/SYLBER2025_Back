@@ -250,7 +250,7 @@ async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
             Content.round_id == round.id,
             Content.user_id == user.id,
         )
-        prev_content = session.query(content).filter(
+        prev_content = session.query(Content).filter(
             Content.id == content.prev_content_id
         ).first()
         if prev_content.content == None:
