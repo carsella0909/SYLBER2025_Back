@@ -293,7 +293,38 @@ async def end_game(user: Annotated[User, Depends(get_user)], code: str):
 
 @router.get("/{code}/next")
 async def what_is_next(user: Annotated[User, Depends(get_user)], code: str):
-    ...
+    room = session.query(Room).filter(Room.code == code).first()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    match room.status:
+        case "inactive":
+            return "end"
+        case "active":
+            return "waiting"
+        case "playing":
+            #round, time left, human done
+            game = get_game(user, room)
+            # get current round
+            round = session.query(Round).filter(
+                Round.game_id == game.id,
+                Round.started_at <= datetime.now(),
+                Round.started_at + timedelta(seconds=game.time_limit) >= datetime.now(),
+            ).first()
+            if not round:
+                room.status = "inactive"
+                session.commit()
+                return "end"
+            # get not null current content
+            not_null_content = session.query(Content).filter(
+                Content.round_id == round.id,
+                Content.content != None
+            ).count()
+            return {
+                "round": round.round,
+                "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
+                "user_done": not_null_content,
+            }
+
 @router.post("/{code}/answer")
 async def answer_question(user: Annotated[User, Depends(get_user)], code: str, data: Text|Audio):
     room = session.query(Room).filter(Room.code == code).first()
