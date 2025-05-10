@@ -70,8 +70,14 @@ class Room(Base):
     def leave(self, user):
         room_user = session.query(RoomUser).filter(RoomUser.room_id == self.id, RoomUser.user_id == user.id).first()
         if room_user:
-            session.delete(room_user)
-            session.commit()
+            #check if room_user is host
+            if room_user.user_id == self.host_id:
+                #if host leave room, delete room
+                self.delete()
+            else:
+                #if user leave room, delete roomuser pair
+                session.delete(room_user)
+                session.commit()
         else:
             raise HTTPException(status_code=404, detail="User not found in room")
 
