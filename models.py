@@ -116,7 +116,8 @@ class Content(Base):
 
     user_id = Column(UUID, ForeignKey("users.id"))
     user = relationship("User", backref="contents")
-    round = Column(Integer, nullable=False)
+    round_id = Column(Integer, ForeignKey("rounds.game_id"))
+    round = relationship("Round", backref="contents")
     content = Column(String, nullable=False)
     __table_args__ = (
         PrimaryKeyConstraint('user_id', 'round'),
