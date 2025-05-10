@@ -93,8 +93,7 @@ async def leave_room(user: Annotated[User, Depends(get_user)],
     else:
         room.leave(user.id)
     # check if room is empty
-    roomusers = session.query(RoomUser).filter(RoomUser.room_id == room.id).all()
-    if not roomusers:
+    if not room.roomusers:
         room.is_active = False
     return {
         "id": room.id,
