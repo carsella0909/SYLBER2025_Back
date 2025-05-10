@@ -1,11 +1,10 @@
 import random
 from typing import Annotated
 
-from bcrypt import hashpw, gensalt, checkpw
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer
+from fastapi.security import , HTTPBearer
 
-from auth.token import create_token, get_user, get_user_by_name
+from auth.token import  get_user
 from models import User, Room, session, RoomUser
 
 security = HTTPBearer()
@@ -14,6 +13,7 @@ router = APIRouter(
     prefix="/room",
     tags=["rooms"],
 )
+
 
 @router.get("/")
 async def create_room(user: Annotated[User, Depends(get_user)],
@@ -48,6 +48,7 @@ async def create_room(user: Annotated[User, Depends(get_user)],
         "host_id": room.host_id,
     }
 
+
 @router.get("/{code}")
 async def get_room(user: Annotated[User, Depends(get_user)],code: str):
     room = session.query(Room).filter(Room.code == code).first()
@@ -80,6 +81,7 @@ async def get_room(user: Annotated[User, Depends(get_user)],code: str):
             for user in users
         ],
     }
+
 
 @router.get("/join/{code}")
 async def join_room(user: Annotated[User, Depends(get_user)],
@@ -133,3 +135,24 @@ async def leave_room(user: Annotated[User, Depends(get_user)],
         "created_at": room.created_at,
         "host_id": room.host_id,
     }
+
+
+@router.get("/{code}/start")
+async def start_game(user: Annotated[User, Depends(get_user)], code: str):
+    ...
+
+@router.get("/{code}/round")
+async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
+    ...
+
+@router.get("/{code}/end")
+async def end_game(user: Annotated[User, Depends(get_user)], code: str):
+    ...
+
+@router.get("/{code}/next")
+async def next_round(user: Annotated[User, Depends(get_user)], code: str):
+    ...
+
+@router.post("/{code}/answer")
+async def answer_question(user: Annotated[User, Depends(get_user)], code: str):
+    ...

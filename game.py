@@ -1,14 +1,14 @@
 from socketio import AsyncNamespace
 from models import session, User, Room, Game, RoomUser
-from sio.catchvoice import CatchVoice
 
 
 class GameNamespace(AsyncNamespace):
     def __init__(self, namespace=None):
         super().__init__(namespace)
-        self.games = None
         games = {}
-        # game_id : CatchVoice dictionary
+        # game_id : CatchVoice
+
+
 
     async def on_disconnect(self, sid, reason):
         ...
@@ -102,13 +102,6 @@ class GameNamespace(AsyncNamespace):
         roomuser.leaving_room(room, user)
 
     async def on_start(self, sid, data):
-        ...
-        # sid를 통해 roomuser 정보를 가져옴
-        # room id를 통해 room 정보를 가져옴
-        # user id와 host id가 같으면 방을 시작
-        # 방을 시작하면 방의 상태를 playing으로 바꾸고
-        # game을 생성
-        # Round1을 emit
         roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
         if not roomuser:
             return
@@ -122,17 +115,8 @@ class GameNamespace(AsyncNamespace):
             # 방을 시작
             room.status = "playing"
             session.commit()
-            # 방에 있는 모든 유저에게 방을 시작했다는 것을 알림(update)
-            for roomuser in room.room_users:
-                await self.emit("game_started", {"code": room.code}, room=roomuser.sid)
-            # 게임을 생성
-            game = Game(room_id=room.id)
-            session.add(game)
-            session.commit()
-            self.games[game.id] = CatchVoice
-            # Round1을 emit
-            for roomuser in room.room_users:
-                await self.emit("round_started", {"round": 1}, room=roomuser.sid)
+            #
+
 
     async def leaving_room(self, room, user):
         if room.status != "playing":
@@ -154,36 +138,12 @@ class GameNamespace(AsyncNamespace):
             self.is_connected = False
             session.commit()
 
-    def get_round(self, sid):
-        #finds game with sid
-        roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
-        if not roomuser:
-            return
-
-        room = roomuser.room
-
-        if not room:
-            return
-        if room.status != "playing":
-            return
-        # find the latest game in Game table
-        game = session.query(Game).filter(Game.room_id == room.id).order_by(Game.started_at.desc()).first()
-        if not game:
-            return
-        catchvoice = self.games.get(game.id)
-
-        return catchvoice.rounds[-1]
-
     async def on_text(self, sid, data):
-        # sid를 통해 round 정보를 가져옴
-        roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
-        if not roomuser:
-            return
-        user = roomuser.user
-        cur_round = self.get_round(sid)
-        if not cur_round:
-            return
-        cur_round.data_dict[user.id] = data
+        ...
 
     async  def on_audio(self, sid, data):
-        ...
+        file = data.get("file")
+        if not file:
+            return
+        with open(f"tmp/{sid}.wav", "wb") as f:
+            f.write(file)

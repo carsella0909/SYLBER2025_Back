@@ -2,11 +2,9 @@ from json import loads
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from socketio import AsyncServer, ASGIApp
 
 from routers.user import router as user_router
 from routers.room import router as room_router
-from sio.game import GameNamespace
 
 
 CONFIG = loads(open("config.json").read())
@@ -35,12 +33,6 @@ app.add_middleware(
     allow_methods=["POST", "GET", "PUT", "DELETE"],
     allow_headers=["*"],
 )
-
-sio = AsyncServer(async_mode='asgi', cors_allowed_origins=origins, ping_timeout=60, logger=True, engineio_logger=True)
-game_namespace = GameNamespace('/game')
-sio.register_namespace(game_namespace)
-sio_app = ASGIApp(sio, app)
-app.mount('/socket.io', sio_app)
 
 # Include the user router
 app.include_router(user_router)

@@ -94,13 +94,3 @@ class Game(Base):
     started_at = Column(TIMESTAMP, nullable=False, default = current_timestamp())
     time_limit = Column(Integer, nullable=False, default=30)
 
-class GameLog(Base):
-    __tablename__ = "game_logs"
-
-    id = Column(Integer, primary_key=True, index=True)
-    datetime = Column(TIMESTAMP, nullable=False, default = current_timestamp())
-    created_by = Column(UUID, ForeignKey("users.id"))
-    creator = relationship("User", backref="game_logs")
-    content = Column(String, nullable=False)
-    game_id = Column(Integer, ForeignKey("games.id"))
-    game = relationship("Game", backref="game_logs")
