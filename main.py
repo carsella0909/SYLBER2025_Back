@@ -6,7 +6,7 @@ from socketio import AsyncServer, ASGIApp
 
 from routers.user import router as user_router
 from routers.room import router as room_router
-from io.game import GameNamespace
+from sio.game import GameNamespace
 
 
 CONFIG = loads(open("config.json").read())
