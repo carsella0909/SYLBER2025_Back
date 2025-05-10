@@ -49,7 +49,7 @@ async def create_room(user: Annotated[User, Depends(get_user)],
     }
 
 @router.get("/{code}")
-async def get_room(code: str):
+async def get_room(user: Annotated[User, Depends(get_user)],code: str):
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
@@ -61,6 +61,10 @@ async def get_room(code: str):
     users = session.query(User).filter(User.id == RoomUser.user_id).filter(RoomUser.room_id == room.id).order_by(RoomUser.entered_at).all()
     if not users:
         raise HTTPException(status_code=404, detail="No users in room")
+    user_check = session.query(RoomUser).filter(user.id == RoomUser.user_id).filter(RoomUser.room_id == room.id).first()
+    if not user_check:
+        raise HTTPException(status_code=404, detail="No permission to view room")
+
     return {
         "id": room.id,
         "max_users": room.max_users,
