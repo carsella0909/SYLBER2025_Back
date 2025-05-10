@@ -234,8 +234,8 @@ async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
         raise HTTPException(status_code=404, detail="Room not found")
     if room.status == "inactive":
         raise HTTPException(status_code=400, detail="Room is not active")
-    if room.status == "playing":
-        raise HTTPException(status_code=400, detail="Room is already playing")
+    if room.status == "active":
+        raise HTTPException(status_code=400, detail="Room is not playing")
     game = get_game(user, room)
     # get current round by started at and time limit
     round = session.query(Round).filter(
@@ -250,7 +250,9 @@ async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
             Content.round_id == round.id,
             Content.user_id == user.id,
         )
-        prev_content = content.prev_content
+        prev_content = session.query(content).filter(
+            Content.id == content.prev_content_id
+        ).first()
         if prev_content.content == None:
             return {
                 "round": round.round,
@@ -345,14 +347,14 @@ async def what_is_next(user: Annotated[User, Depends(get_user)], code: str):
                 room.delete()
                 return "end"
             # get not null current content
-            not_null_content = session.query(Content).filter(
+            null_content = session.query(Content).filter(
                 Content.round_id == round.id,
-                Content.content != None
+                Content.content == None
             ).count()
             return {
                 "round": round.round,
                 "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
-                "user_done": not_null_content,
+                "user_done": null_content,
             }
     return None
 
@@ -400,23 +402,20 @@ async def answer_question(user: Annotated[User, Depends(get_user)], code: str, d
         raise HTTPException(status_code=404, detail="Round not found")
     if round.round != data.round:
         raise HTTPException(status_code=400, detail="Round not found")
-    # check if user already answered this round
-    content = session.query(Content).filter(Content.user_id == user.id, Content.round == data.round).first()
-    if content:
+    # check if user already answered this round\
+    content = session.query(Content).filter(
+        Content.round_id == round.id,
+        Content.user_id == user.id,
+    ).first()
+    if content.content is not None:
         raise HTTPException(status_code=400, detail="User already answered this round")
     # check if round is ended
     if round.is_ended():
         raise HTTPException(status_code=400, detail="Round is ended")
     # check if round is audio or text
     if round.type == "text":
-        content = Content(
-            user_id=user.id,
-            round_id = round.id,
-            content=data.text
-        )
-        session.add(content)
+        content.content = data.text
         session.commit()
-        session.refresh(content)
 
     elif round.type == "audio":
         # save data(audio file) in tmp/{round_id}_{user_id}.wav
@@ -425,12 +424,5 @@ async def answer_question(user: Annotated[User, Depends(get_user)], code: str, d
         os.makedirs("tmp", exist_ok=True)
         with open(file_path, "wb") as f:
             f.write(data.audio)
-
-        content = Content(
-            user_id=user.id,
-            round_id = round.id,
-            content=file_path
-        )
-        session.add(content)
+        content.content = file_path
         session.commit()
-        session.refresh(content)
