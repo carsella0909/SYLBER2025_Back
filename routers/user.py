@@ -50,6 +50,10 @@ async def delete_user(username: Annotated[str, Depends(get_user_by_name)]):
 @router.post("/")
 async def register(form_data: OAuth2PasswordRequestForm = Depends()):
     try:
+        # Check if user already exists
+        existing_user = session.query(User).filter(User.username == form_data.username).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="User already exists")
         user = User(
             username=form_data.username,
             password=hashpw(form_data.password.encode('utf-8'), gensalt()).decode("utf-8"),
