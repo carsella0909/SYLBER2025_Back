@@ -149,5 +149,9 @@ class GameNamespace(AsyncNamespace):
     async def on_text(self, sid, data):
         ...
 
-    async  def on_image(self, sid, data):
-        ...
+    async  def on_audio(self, sid, data):
+        file = data.get("file")
+        if not file:
+            return
+        with open(f"tmp/{sid}.wav", "wb") as f:
+            f.write(file)
