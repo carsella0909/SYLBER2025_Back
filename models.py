@@ -94,14 +94,13 @@ class Game(Base):
     room = relationship("Room", backref="games")
     started_at = Column(TIMESTAMP, nullable=False, default = current_timestamp())
     time_limit = Column(Integer, nullable=False, default=30)
-    current_round = Column(Integer, nullable=False, default=0)
 
 
 class Round(Base):
     __tablename__ = "rounds"
 
     id = Column(Integer, primary_key=True, index=True)
-    game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
+    game_id = Column(Integer, ForeignKey("games.id"))
     game = relationship("Game", backref="rounds")
     round = Column(Integer, nullable=False)
     type = Column(String, nullable=False)
@@ -120,5 +119,5 @@ class Content(Base):
     user = relationship("User", backref="contents")
     round_id = Column(Integer, ForeignKey("rounds.id"))
     round = relationship("Round", backref="contents")
-    content = Column(String, nullable=False)
+    content = Column(String, nullable=True)
     prev_content_id = Column(Integer, ForeignKey("contents.id"), nullable=True)
