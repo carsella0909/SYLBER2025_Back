@@ -155,16 +155,21 @@ async def leave_room(user: Annotated[User, Depends(get_user)],
     }
 
 def get_game(user, room) -> Game:
-    game = session.query(Game).join(
-        Room, Game.room_id == Room.id
-    ).join(
-        RoomUser, RoomUser.room_id == Room.id
-    ).filter(
-        RoomUser.user_id == user.id,
-        RoomUser.room_id == room.id,
-        Room.status == "playing",
-        Game.room_id == room.id,
-    ).first()
+    try:
+        game = session.query(Game).join(
+            Room, Game.room_id == Room.id
+        ).join(
+            RoomUser, RoomUser.room_id == Room.id
+        ).filter(
+            RoomUser.user_id == user.id,
+            RoomUser.room_id == room.id,
+            Room.status == "playing",
+            Game.room_id == room.id,
+        ).first()
+    except Exception as e:
+        print(e)
+        session.rollback()
+        raise HTTPException(status_code=400, detail="Error getting game")
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     return game
@@ -193,7 +198,9 @@ async def start_game(user: Annotated[User, Depends(get_user)], code: str):
     session.add(game)
     session.commit()
     session.refresh(game)
-    users = session.query(User).filter(User.id == RoomUser.user_id).filter(RoomUser.room_id == room.id).all()
+    users = session.query(User).join(
+        RoomUser, User.id == RoomUser.user_id
+    ).filter(RoomUser.room_id == room.id).all()
     shuffle(users)
     contents = []
     for r in range(1, len(users)+1):
@@ -209,16 +216,16 @@ async def start_game(user: Annotated[User, Depends(get_user)], code: str):
         contents.append([])
         for i, u in enumerate(users):
             content = Content(
-                round_id=round.game_id,
                 user_id=u.id,
-                content = None,
-                prev_content_id = None if r == 1 else contents[r-2][(i+1) % len(users)].id,
+                round_id=round.id,
+                content=None,
+                prev_content_id=
+                None if r == 1 else contents[-2][(r+i-1) % len(users)].id
             )
             session.add(content)
             session.commit()
             session.refresh(content)
-            contents[r-1].append(content)
-        return
+            contents[-1].append(content)
 
 @router.get("/{code}/round")
 async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
@@ -227,8 +234,8 @@ async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
         raise HTTPException(status_code=404, detail="Room not found")
     if room.status == "inactive":
         raise HTTPException(status_code=400, detail="Room is not active")
-    if room.status == "playing":
-        raise HTTPException(status_code=400, detail="Room is already playing")
+    if room.status == "active":
+        raise HTTPException(status_code=400, detail="Room is not playing")
     game = get_game(user, room)
     # get current round by started at and time limit
     round = session.query(Round).filter(
@@ -238,16 +245,42 @@ async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
     ).first()
     if not round:
         raise HTTPException(status_code=404, detail="Round not found")
-    # return round(int), number of left people, times left
-    not_null_content_count = session.query(Round).filter(
-        Round.game_id == game.id,
-        Content.content != None
-    ).count()
-    return {
-        "round": round.round,
-        "left_people": len(room.room_users) - not_null_content_count,
-        "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
-    }
+    if round.round != 1:
+        content = session.query(Content).filter(
+            Content.round_id == round.id,
+            Content.user_id == user.id,
+        ).first()
+        prev_content = session.query(Content).filter(
+            Content.id == content.prev_content_id
+        ).first()
+        if prev_content.content == None:
+            return {
+                "round": round.round,
+                "type": round.type,
+                "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
+                "prev_content": {
+                    "id": prev_content.id,
+                    "username": prev_content.user.username,
+                    "data": None
+                }
+            }
+        if prev_content.round.type == "audio":
+            with open(prev_content.content, "rb") as f:
+                data = f.read()
+        elif prev_content.round.type == "text":
+            data = prev_content.content
+        return {
+            "round": round.round,
+            "type": round.type,
+            "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
+            "prev_content": {
+                "id": prev_content.id,
+                "username": prev_content.user.username,
+                "data": data
+            }
+        }
+    else:
+        return
 
 @router.get("/{code}/result")
 async def end_game(user: Annotated[User, Depends(get_user)], code: str):
@@ -311,18 +344,17 @@ async def what_is_next(user: Annotated[User, Depends(get_user)], code: str):
                 Round.started_at + timedelta(seconds=game.time_limit) >= datetime.now(),
             ).first()
             if not round:
-                room.status = "inactive"
-                session.commit()
+                room.delete()
                 return "end"
             # get not null current content
-            not_null_content = session.query(Content).filter(
+            null_content = session.query(Content).filter(
                 Content.round_id == round.id,
-                Content.content != None
+                Content.content == None
             ).count()
             return {
                 "round": round.round,
                 "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
-                "user_done": not_null_content,
+                "user_done": null_content,
             }
     return None
 
@@ -360,26 +392,31 @@ async def answer_question(user: Annotated[User, Depends(get_user)], code: str, d
     if room.status == "active":
         raise HTTPException(status_code=400, detail="Room is not playing")
     game = get_game(user, room)
-    # get latest round
-    round = session.query(Round).filter(Round.game_id == game.id).order_by(Round.round.desc()).first()
+    # get current round
+    round = session.query(Round).filter(
+        Round.game_id == game.id,
+        Round.started_at <= datetime.now(),
+        Round.started_at + timedelta(seconds=game.time_limit) >= datetime.now(),
+    ).first()
     if not round:
         raise HTTPException(status_code=404, detail="Round not found")
     if round.round != data.round:
         raise HTTPException(status_code=400, detail="Round not found")
-    # check if user already answered this round
-    content = session.query(Content).filter(Content.user_id == user.id, Content.round == data.round).first()
-    if content:
+    # check if user already answered this round\
+    content = session.query(Content).filter(
+        Content.round_id == round.id,
+        Content.user_id == user.id,
+    ).first()
+    if content.content is not None:
         raise HTTPException(status_code=400, detail="User already answered this round")
     # check if round is ended
     if round.is_ended():
         raise HTTPException(status_code=400, detail="Round is ended")
     # check if round is audio or text
     if round.type == "text":
-        content = Content(
-            user_id=user.id,
-            round_id = round.id,
-            content=data.text
-        )
+        content.content = data.text
+        session.commit()
+
     elif round.type == "audio":
         # save data(audio file) in tmp/{round_id}_{user_id}.wav
 
@@ -387,9 +424,5 @@ async def answer_question(user: Annotated[User, Depends(get_user)], code: str, d
         os.makedirs("tmp", exist_ok=True)
         with open(file_path, "wb") as f:
             f.write(data.audio)
-
-        content = Content(
-            user_id=user.id,
-            round_id = round.id,
-            content=file_path
-        )
+        content.content = file_path
+        session.commit()
