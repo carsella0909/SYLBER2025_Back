@@ -2,9 +2,9 @@ import random
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import , HTTPBearer
+from fastapi.security import HTTPBearer
 
-from auth.token import  get_user
+from auth.token import get_user
 from models import User, Room, session, RoomUser, Game
 
 security = HTTPBearer()
