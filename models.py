@@ -66,6 +66,15 @@ class Room(Base):
         session.query(RoomUser).filter(RoomUser.room_id == self.id).delete()
         session.commit()
 
+    #leave user from room
+    def leave(self, user):
+        room_user = session.query(RoomUser).filter(RoomUser.room_id == self.id, RoomUser.user_id == user.id).first()
+        if room_user:
+            session.delete(room_user)
+            session.commit()
+        else:
+            raise HTTPException(status_code=404, detail="User not found in room")
+
 
 class Game(Base):
     __tablename__ = "games"
