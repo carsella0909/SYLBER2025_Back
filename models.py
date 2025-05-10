@@ -94,3 +94,17 @@ class Game(Base):
     started_at = Column(TIMESTAMP, nullable=False, default = current_timestamp())
     time_limit = Column(Integer, nullable=False, default=30)
 
+
+class Content(Base):
+    __tablename__ = "contents"
+
+    game_id = Column(Integer, ForeignKey("games.id"))
+    game = relationship("Game", backref="contents")
+    user_id = Column(UUID, ForeignKey("users.id"))
+    user = relationship("User", backref="contents")
+    round = Column(Integer, nullable=False)
+    type = Column(String, nullable=False)
+    content = Column(String, nullable=False)
+    __table_args__ = (
+        PrimaryKeyConstraint('game_id', 'user_id', 'round'),
+    )
