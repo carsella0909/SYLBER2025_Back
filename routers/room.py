@@ -1,9 +1,12 @@
 import random
+from random import shuffle
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer
 
+from auth.token import  get_user
+from models import *
 from auth.token import  get_user
 from models import *
 
@@ -159,7 +162,7 @@ def get_game(user, room) -> Game:
     ).filter(
         RoomUser.user_id == user.id,
         RoomUser.room_id == room.id,
-        RoomUser.is_connected == True,
+        Room.status == "playing",
         Game.room_id == room.id,
     ).first()
     if not game:
@@ -190,7 +193,32 @@ async def start_game(user: Annotated[User, Depends(get_user)], code: str):
     session.add(game)
     session.commit()
     session.refresh(game)
-    return
+    users = session.query(User).filter(User.id == RoomUser.user_id).filter(RoomUser.room_id == room.id).all()
+    shuffle(users)
+    contents = []
+    for r in range(1, len(users)+1):
+        round = Round(
+            game_id=game.id,
+            round=r,
+            started_at=datetime.now() + timedelta(seconds=game.time_limit * (r-1)),
+            type = "text" if r % 2 == 1 else "audio",
+        )
+        session.add(round)
+        session.commit()
+        session.refresh(round)
+        contents.append([])
+        for i, u in enumerate(users):
+            content = Content(
+                round_id=round.game_id,
+                user_id=u.id,
+                content = None,
+                prev_content_id = None if r == 1 else contents[r-2][(i+1) % len(users)].id,
+            )
+            session.add(content)
+            session.commit()
+            session.refresh(content)
+            contents[r-1].append(content)
+        return
 
 @router.get("/{code}/round")
 async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
@@ -202,45 +230,69 @@ async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
     if room.status == "playing":
         raise HTTPException(status_code=400, detail="Room is already playing")
     game = get_game(user, room)
-    # get latest round data
-    round = session.query(Round).filter(Round.game_id == game.id).order_by(Round.round.desc()).first()
+    # get current round by started at and time limit
+    round = session.query(Round).filter(
+        Round.game_id == game.id,
+        Round.started_at <= datetime.now(),
+        Round.started_at + timedelta(seconds=game.time_limit) >= datetime.now(),
+    ).first()
     if not round:
         raise HTTPException(status_code=404, detail="Round not found")
     # return round(int), number of left people, times left
-    content_count = session.query(Round).filter(Round.game_id == game.id).count()
+    not_null_content_count = session.query(Round).filter(
+        Round.game_id == game.id,
+        Content.content != None
+    ).count()
     return {
         "round": round.round,
-        "left_people": len(room.room_users) - content_count,
+        "left_people": len(room.room_users) - not_null_content_count,
         "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
     }
 
-@router.get("/{code}/end")
+@router.get("/{code}/result")
 async def end_game(user: Annotated[User, Depends(get_user)], code: str):
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    if room.status == "inactive":
-        raise HTTPException(status_code=400, detail="Room is not active")
-    if room.status == "playing":
-        raise HTTPException(status_code=400, detail="Room is already playing")
-    game = get_game(user, room)
-    # end game
-    game.room.status = "active"
-    session.delete(game)
-    session.commit()
+    game = session.query(Game).join(
+        Room, Game.room_id == Room.id
+    ).filter(
+        Room.code == code,
+        Room.status == "inactive"
+    )
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
     # send all contents related to this game sorted by user, round
     contents = session.query(Content).join(
-        Round, Content.round == Round.round
+        Round, Content.round_id == Round.game_id
+    ).join(
+        Game, Round.game_id == Game.id
     ).filter(
-        Round.game_id == game.id
-    )
-    contents = contents.order_by(Content.user_id, Round.round).all()
+        Game.id == game.id,
+        Content.round_id == Round.game_id,
+    ).all()
+    # check if there are contents
     if not contents:
         raise HTTPException(status_code=404, detail="No contents found")
 
+    return {
+        "game_id": game.id,
+        "contents": [
+            {
+                "id": content.id,
+                "user_id": content.user_id,
+                "round": content.round.round,
+                "content": content.content,
+                "prev_content_id": content.prev_content_id,
+            }
+            for content in contents
+        ]
+    }
+
+    # return contents connected by prev_content_id
 
 @router.get("/{code}/next")
-async def next_round(user: Annotated[User, Depends(get_user)], code: str):
+async def what_is_next(user: Annotated[User, Depends(get_user)], code: str):
     ...
 @router.post("/{code}/answer")
 async def answer_question(user: Annotated[User, Depends(get_user)], code: str, data: Text|Audio):

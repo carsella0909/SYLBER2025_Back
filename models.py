@@ -100,7 +100,6 @@ class Game(Base):
 class Round(Base):
     __tablename__ = "rounds"
 
-    id = Column(Integer, primary_key=True, index=True)
     game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
     game = relationship("Game", backref="rounds")
     round = Column(Integer, nullable=False)
@@ -115,11 +114,10 @@ class Round(Base):
 class Content(Base):
     __tablename__ = "contents"
 
+    id = Column(Integer, primary_key=True, index=True)
     user_id = Column(UUID, ForeignKey("users.id"))
     user = relationship("User", backref="contents")
     round_id = Column(Integer, ForeignKey("rounds.id"))
     round = relationship("Round", backref="contents")
     content = Column(String, nullable=False)
-    __table_args__ = (
-        PrimaryKeyConstraint('user_id', 'round_id'),
-    )
+    prev_content_id = Column(Integer, ForeignKey("contents.id"), nullable=True)
