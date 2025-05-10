@@ -43,22 +43,7 @@ def get_user(authorization: str = Security(APIKeyHeader(name="Authorization"))) 
         payload = decode_token(token)
     except HTTPException as e:
         raise e
-    user = session.query(User).filter(User.name == payload.get("sub")).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    return user
-def get_user(authorization: str = Security(APIKeyHeader(name="Authorization"))) -> User:
-    try:
-        token_type, token = authorization.split()
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    if token_type != "Bearer":
-        raise HTTPException(status_code=401, detail="Invalid token type")
-    try:
-        payload = decode_token(token)
-    except HTTPException as e:
-        raise e
-    user = session.query(User).filter(User.name == payload.get("sub")).first()
+    user = session.query(User).filter(User.username == payload.get("sub")).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
