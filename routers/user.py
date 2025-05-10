@@ -68,7 +68,7 @@ async def get_user_info(username: str):
     user = session.query(User).filter(User.username == username).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"name": user.name}
+    return {"username": user.username}
 
 @router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
