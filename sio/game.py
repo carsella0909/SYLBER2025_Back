@@ -1,8 +1,15 @@
 from socketio import AsyncNamespace
 from models import session, User, Room, Game, RoomUser
+from sio.catchvoice import CatchVoice
 
 
 class GameNamespace(AsyncNamespace):
+    def __init__(self, namespace=None):
+        super().__init__(namespace)
+        self.games = None
+        games = {}
+        # game_id : CatchVoice dictionary
+
     async def on_disconnect(self, sid, reason):
         ...
         # 유저가 방에서 나갈 때 sid를 통해 roomuser 정보를 가져옴
@@ -122,6 +129,7 @@ class GameNamespace(AsyncNamespace):
             game = Game(room_id=room.id)
             session.add(game)
             session.commit()
+            self.games[game.id] = CatchVoice
             # Round1을 emit
             for roomuser in room.room_users:
                 await self.emit("round_started", {"round": 1}, room=roomuser.sid)
@@ -146,8 +154,37 @@ class GameNamespace(AsyncNamespace):
             self.is_connected = False
             session.commit()
 
-    async def on_text(self, sid, data):
-        ...
+    def get_round(self, sid):
+        #finds game with sid
+        roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
+        if not roomuser:
+            return
 
-    async  def on_image(self, sid, data):
+        room = roomuser.room
+
+        if not room:
+            return
+        if room.status != "playing":
+            return
+        # find the latest game in Game table
+        game = session.query(Game).filter(Game.room_id == room.id).order_by(Game.started_at.desc()).first()
+        if not game:
+            return
+
+        catchvoice = self.games.get(game.id)
+
+        return catchvoice.rounds[-1]
+
+    async def on_text(self, sid, data):
+        # sid를 통해 round 정보를 가져옴
+        roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
+        if not roomuser:
+            return
+        user = roomuser.user
+        cur_round = self.get_round(sid)
+        if not cur_round:
+            return
+        cur_round.data_dict[user.id] = data
+
+    async  def on_audio(self, sid, data):
         ...

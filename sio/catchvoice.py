@@ -11,11 +11,14 @@ class CatchVoice:
         self.room = room
         self.users = users
         shuffle(self.users)
+        #users: random circular list
         self.game = Game(
             room_id=self.room.id,
         )
         self.current_round = 0
-        self.catch_voice_round = CatchVoiceRound(self)
+
+        #CatchVoiceRound arr
+        self.rounds = []
 
     def get_user(self, sid):
         # Get the user from the sid in roomusers and validate is in this game
@@ -31,7 +34,10 @@ class CatchVoice:
 
     def next_round(self):
         # Start the game round
+
         self.current_round += 1
+        catchvoiceround = CatchVoiceRound(self, self.current_round)
+        self.rounds.append(catchvoiceround)
         if self.current_round % 2 == 0:
             self.audio_round()
         else:
@@ -54,8 +60,11 @@ class CatchVoice:
 
 
     def audio_round(self):
-        # TODO : Implement the audio round
-        ...
+        self.broadcast('round', {
+            'round': self.current_round,
+            'type': 'audio'
+        })
+
 
     async def _timeout(self, timeout):
         # Wait for the timeout
@@ -63,16 +72,17 @@ class CatchVoice:
 
 
 class CatchVoiceRound:
-    round_done = asyncio.Event()
-    round_done.clear()
-
-    def __init__(self, game: CatchVoice):
+    def __init__(self, game: CatchVoice, round_number: int):
         self.game = game
+        #data_dict: {user_id: data}
+        self.data_dict = {}
+        #round_number: current round_number
+        self.round_number = round_number
         self.round_done = asyncio.Event()
         self.round_done.clear()
 
     def start(self):
-        # Start the round
-        self.game.next_round()
-        self.round_done.clear()
-        self.round_done.set()
+        new_users = self.game.users
+        for i in range(len(new_users)):
+            new_users[i] = self.game.users[(i + self.round_number) % len(self.game.users)]
+
