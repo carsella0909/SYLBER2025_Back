@@ -4,8 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer
 
-from auth.token import  get_user
-from models import *
+from auth.token import get_user
+from models import User, Room, session, RoomUser, Game
 
 security = HTTPBearer()
 
@@ -154,75 +154,15 @@ def get_game(user, room) -> Game:
 
 @router.get("/{code}/start")
 async def start_game(user: Annotated[User, Depends(get_user)], code: str):
-    room = session.query(Room).filter(Room.code == code).first()
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found")
-    if room.status == "inactive":
-        raise HTTPException(status_code=400, detail="Room is not active")
-    if room.status == "playing":
-        raise HTTPException(status_code=400, detail="Room is already playing")
-    if user.id != room.host_id:
-        raise HTTPException(status_code=403, detail="Only host can start the game")
-    # check if there are enough users in the room
-    if len(room.room_users) < 2:
-        raise HTTPException(status_code=400, detail="Not enough users in the room")
-    # start game
-    room.status = "playing"
-    session.commit()
-    game = Game(
-        room_id=room.id,
-    )
-    session.add(game)
-    session.commit()
-    session.refresh(game)
-    return
+    ...
 
 @router.get("/{code}/round")
 async def get_round_data(user: Annotated[User, Depends(get_user)], code: str):
-    room = session.query(Room).filter(Room.code == code).first()
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found")
-    if room.status == "inactive":
-        raise HTTPException(status_code=400, detail="Room is not active")
-    if room.status == "playing":
-        raise HTTPException(status_code=400, detail="Room is already playing")
-    game = get_game(user, room)
-    # get latest round data
-    round = session.query(Round).filter(Round.game_id == game.id).order_by(Round.round.desc()).first()
-    if not round:
-        raise HTTPException(status_code=404, detail="Round not found")
-    # return round(int), number of left people, times left
-    content_count = session.query(Round).filter(Round.game_id == game.id).count()
-    return {
-        "round": round.round,
-        "left_people": len(room.room_users) - content_count,
-        "time_left": game.time_limit - (datetime.now() - round.started_at).seconds,
-    }
+    ...
 
 @router.get("/{code}/end")
 async def end_game(user: Annotated[User, Depends(get_user)], code: str):
-    room = session.query(Room).filter(Room.code == code).first()
-    if not room:
-        raise HTTPException(status_code=404, detail="Room not found")
-    if room.status == "inactive":
-        raise HTTPException(status_code=400, detail="Room is not active")
-    if room.status == "playing":
-        raise HTTPException(status_code=400, detail="Room is already playing")
-    game = get_game(user, room)
-    # end game
-    game.room.status = "active"
-    session.delete(game)
-    session.commit()
-    # send all contents related to this game sorted by user, round
-    contents = session.query(Content).join(
-        Round, Content.round == Round.round
-    ).filter(
-        Round.game_id == game.id
-    )
-    contents = contents.order_by(Content.user_id, Round.round).all()
-    if not contents:
-        raise HTTPException(status_code=404, detail="No contents found")
-
+    ...
 
 @router.get("/{code}/next")
 async def next_round(user: Annotated[User, Depends(get_user)], code: str):
