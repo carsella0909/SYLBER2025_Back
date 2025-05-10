@@ -1,3 +1,4 @@
+import random
 from typing import Annotated
 
 from bcrypt import hashpw, gensalt, checkpw
@@ -17,13 +18,25 @@ router = APIRouter(
 @router.get("/")
 async def create_room(user: Annotated[User, Depends(get_user)],
                        max_users: int = 8):
+    # check if user is already in any room
+    roomuser = session.query(RoomUser).filter(RoomUser.user_id == user.id).first()
+    if roomuser:
+        raise HTTPException(status_code=400, detail="User is already in a room")
+
+    characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    code = "".join(characters[random.randint(0, len(characters) - 1)] for _ in range(5))
+    # Check if code is already in use and generate a new one if it is
+    while session.query(Room).filter(Room.code == code).first():
+        code = "".join(characters[random.randint(0, len(characters) - 1)] for _ in range(5))
+
     room = Room(
         max_users=max_users,
-        code="",
+        code=code,
         is_active=True,
         host_id=user.id,
     )
     session.add(room)
+    room.join(user)
     session.commit()
     session.refresh(room)
     return {
@@ -40,8 +53,10 @@ async def get_room(code: str):
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
+    if not room.is_active:
+        raise HTTPException(status_code=400, detail="Room is not active")
     # return users in room with sort by entered_at
-    users = session.query(RoomUser).filter(RoomUser.room_id == room.id).order_by(RoomUser.entered_at).all()
+    users = session.query(User).filter(User.id == RoomUser.user_id).filter(RoomUser.room_id == room.id).order_by(RoomUser.entered_at).all()
     if not users:
         raise HTTPException(status_code=404, detail="No users in room")
     return {
@@ -66,13 +81,15 @@ async def join_room(user: Annotated[User, Depends(get_user)],
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
+    if not room.is_active:
+        raise HTTPException(status_code=400, detail="Room is not active")
     # check if user is already in any room
     roomuser = session.query(RoomUser).filter(RoomUser.user_id == user.id).first()
     if roomuser:
         raise HTTPException(status_code=400, detail="User is already in a room")
     if room.max_users <= len(room.room_users):
         raise HTTPException(status_code=400, detail="Room is full")
-    room.join(user.id)
+    room.join(user)
     return {
         "id": room.id,
         "max_users": room.max_users,
@@ -88,13 +105,16 @@ async def leave_room(user: Annotated[User, Depends(get_user)],
     room = session.query(Room).filter(Room.code == code).first()
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
+    if not room.is_active:
+        raise HTTPException(status_code=400, detail="Room is not active")
     if user.id == room.host_id:
         room.delete()
     else:
-        room.leave(user.id)
+        room.leave(user)
     # check if room is empty
-    if not room.roomusers:
-        room.is_active = False
+    roomusers = session.query(RoomUser).filter(RoomUser.room_id == room.id).all()
+    if not roomusers:
+        room.delete()
     return {
         "id": room.id,
         "max_users": room.max_users,

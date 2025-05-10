@@ -52,15 +52,15 @@ class Room(Base):
     #join user in room
     def join(self, user):
         room_user = RoomUser(
-            room_id = self.id,
-            user_id = user.id,
-            is_connected = True,
-            entered_at = current_timestamp()
+            room_id=self.id,
+            user_id=user.id,
+            is_connected=True,
+            entered_at=current_timestamp()
         )
         session.add(room_user)
         session.commit()
 
-    #delete room and all roomuser paires
+    #delete room and all roomuser pairs
     def delete(self):
         self.is_active = False
         session.query(RoomUser).filter(RoomUser.room_id == self.id).delete()

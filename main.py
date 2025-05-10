@@ -17,13 +17,13 @@ app = FastAPI()
 
 # Allow CORS for all origins
 origins = [
-    "http://localhost:3000",
+    "http://localhost:5173",
 ]
 
 # noinspection PyTypeChecker
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,7 +33,7 @@ sio = AsyncServer(async_mode='asgi', cors_allowed_origins=origins, ping_timeout=
 game_namespace = GameNamespace('/game')
 sio.register_namespace(game_namespace)
 sio_app = ASGIApp(sio, app)
-app.mount('/io', sio_app)
+app.mount('/socket.io', sio_app)
 
 # Include the user router
 app.include_router(user_router)
