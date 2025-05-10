@@ -23,7 +23,8 @@ origins = [
     "http://localhost:5173",
     "http://192.168.175.162",
     "http://0.0.0.0:8000",
-    "http://0.0.0.0"
+    "http://0.0.0.0",
+    "http://192.168.120.162:5173"
 ]
 
 # noinspection PyTypeChecker

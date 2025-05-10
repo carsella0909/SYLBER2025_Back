@@ -7,8 +7,8 @@ class GameNamespace(AsyncNamespace):
         ...
         # 유저가 방에서 나갈 때 sid를 통해 roomuser 정보를 가져옴
         # room id를 통해 room 정보를 가져옴
-        # room state가 playing이면 roomuser가 방을 나간 것으로 간주
-        # room state가 playing이 아니면 roomuser의 is_connected를 false로 바꿈
+        # room state가 playing이 아니면 roomuser가 방을 나간 것으로 간주
+        # room state가 playing이면 roomuser의 is_connected를 false로 바꿈
         roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
         if not roomuser:
             return
@@ -127,7 +127,7 @@ class GameNamespace(AsyncNamespace):
                 await self.emit("round_started", {"round": 1}, room=roomuser.sid)
 
     async def leaving_room(self, room, user):
-        if room.status == "playing":
+        if room.status != "playing":
             if user.id == room.host_id:
                 for user in room.room_users:
                     await self.emit("room_deleted", {"code": room.code}, room=user.sid)
@@ -143,7 +143,6 @@ class GameNamespace(AsyncNamespace):
                     room.leave(user)
 
         else:
-            # 방을 나간 것이 아님
             self.is_connected = False
             session.commit()
 
