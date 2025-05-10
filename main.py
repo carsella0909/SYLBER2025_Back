@@ -17,8 +17,13 @@ app = FastAPI()
 
 # Allow CORS for all origins
 origins = [
+    "http://192.168.175.18:8000",
+    "http://192.168.175.162:5173",
+    "http://192.168.175.213",
     "http://localhost:5173",
-    "http://192.168.175.162:5173"
+    "http://192.168.175.162",
+    "http://0.0.0.0:8000",
+    "http://0.0.0.0"
 ]
 
 # noinspection PyTypeChecker
@@ -26,7 +31,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["POST", "GET", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
