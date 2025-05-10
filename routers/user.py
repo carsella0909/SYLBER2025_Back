@@ -48,11 +48,11 @@ async def delete_user(username: Annotated[str, Depends(get_user_by_name)]):
     return {"message": "User deleted successfully"}
 
 @router.post("/")
-async def create_user(username: str, password: str):
+async def register(form_data: OAuth2PasswordRequestForm = Depends()):
     try:
         user = User(
-            username=username,
-            password=hashpw(password.encode('utf-8'), gensalt()).decode("utf-8"),
+            username=form_data.username,
+            password=hashpw(form_data.password.encode('utf-8'), gensalt()).decode("utf-8"),
         )
         session.add(user)
         session.commit()
