@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.user import router as user_router
-
+from routers.room import router as room_router
 
 CONFIG = loads(open("config.json").read())
 HOST = CONFIG["host"]
@@ -28,6 +28,8 @@ app.add_middleware(
 
 # Include the user router
 app.include_router(user_router)
+# Include the room router
+app.include_router(room_router)
 
 @app.get("/")
 async def root():
