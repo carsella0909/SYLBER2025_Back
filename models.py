@@ -23,17 +23,6 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     password = Column(String, nullable=False)
 
-class Room(Base):
-    __tablename__ = "rooms"
-
-    id = Column(Integer, primary_key=True, index=True)
-    max_users = Column(Integer, nullable=False, default=8)
-    code = Column(String, nullable=False)
-    is_active = Column(Boolean, nullable=False, default=True)
-    host_id = Column(UUID, ForeignKey("users.id"))
-    host = relationship("User", backref="rooms")
-    created_at = Column(TIMESTAMP, nullable=False, default = current_timestamp())
-
 class RoomUser(Base):
     __tablename__ = "room_users"
 
@@ -47,6 +36,36 @@ class RoomUser(Base):
     __table_args__ = (
         PrimaryKeyConstraint('room_id', 'user_id'),
     )
+
+
+class Room(Base):
+    __tablename__ = "rooms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    max_users = Column(Integer, nullable=False, default=8)
+    code = Column(String, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    host_id = Column(UUID, ForeignKey("users.id"))
+    host = relationship("User", backref="rooms")
+    created_at = Column(TIMESTAMP, nullable=False, default=current_timestamp())
+
+    #join user in room
+    def join(self, user):
+        room_user = RoomUser(
+            room_id = self.id,
+            user_id = user.id,
+            is_connected = True,
+            entered_at = current_timestamp()
+        )
+        session.add(room_user)
+        session.commit()
+
+    #delete room and all roomuser paires
+    def delete(self):
+        self.is_active = False
+        session.query(RoomUser).filter(RoomUser.room_id == self.id).delete()
+        session.commit()
+
 
 class Game(Base):
     __tablename__ = "games"
