@@ -1,10 +1,8 @@
 from socketio import AsyncNamespace
-from sqlalchemy.sql.functions import current_timestamp
-
 from models import session, User, Room, Game, RoomUser
 
+
 class GameNamespace(AsyncNamespace):
-    rooms = {}
     async def on_disconnect(self, sid, reason):
         ...
         # 유저가 방에서 나갈 때 sid를 통해 roomuser 정보를 가져옴
@@ -78,7 +76,6 @@ class GameNamespace(AsyncNamespace):
         else:
             return
 
-
     async def on_leave(self, sid, data):
         ...
         # 유저가 방에서 나갈 때 sid를 통해 roomuser 정보를 가져옴
@@ -128,25 +125,6 @@ class GameNamespace(AsyncNamespace):
             # Round1을 emit
             for roomuser in room.room_users:
                 await self.emit("round_started", {"round": 1}, room=roomuser.sid)
-
-    async def on_text(self, sid, data):
-        ...
-        # sid를 통해 roomuser 정보를 가져옴
-        # roomuser와 room 을 join하여 game id를 가져옴
-        # game id를 통해 game 정보를 가져옴
-        # game id를 통해 game log를 가져옴
-        # game log를 저장
-        # game을 update
-
-
-    async def on_audio(self, sid, data):
-        ...
-        # sid를 통해 roomuser 정보를 가져옴
-        # roomuser와 room 을 join하여 game id를 가져옴
-        # game id를 통해 game 정보를 가져옴
-        # game id를 통해 game log를 가져옴
-        # game log를 저장
-        # game을 update
 
     async def leaving_room(self, room, user):
         if room.status == "playing":
