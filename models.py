@@ -121,5 +121,5 @@ class Content(Base):
     round = relationship("Round", backref="contents")
     content = Column(String, nullable=False)
     __table_args__ = (
-        PrimaryKeyConstraint('user_id', 'round'),
+        PrimaryKeyConstraint('user_id', 'round_id'),
     )
