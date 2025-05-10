@@ -1,8 +1,7 @@
 # CatchVoice 🎤🎶
 
 ## 노래를 부르고 맞히는 즐거움!
-
-![CatchVoice](https://via.placeholder.com/600x300?text=CatchVoice)
+![img.png](img.png)
 
 ## ✨ 프로젝트 소개
 
