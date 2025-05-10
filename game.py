@@ -35,7 +35,7 @@ class GameNamespace(AsyncNamespace):
         # roomuser의 is_connected를 true로 바꿈
         # is connected가 true면 중복접속으로 간주하고
         # 이미 저장된 sid의 연결을 끊고 새로운 sid를 저장
-        roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
+                                                                                                                                                                                                                                                                                                                                                                                                roomuser = session.query(RoomUser).filter(RoomUser.sid == sid).first()
         if not roomuser:
             return
         room = roomuser.room
