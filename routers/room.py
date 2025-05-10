@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import , HTTPBearer
 
 from auth.token import  get_user
-from models import User, Room, session, RoomUser
+from models import User, Room, session, RoomUser, Game
 
 security = HTTPBearer()
 
@@ -135,6 +135,21 @@ async def leave_room(user: Annotated[User, Depends(get_user)],
         "created_at": room.created_at,
         "host_id": room.host_id,
     }
+
+def get_game(user, room) -> Game:
+    game = session.query(Game).join(
+        Room, Game.room_id == Room.id
+    ).join(
+        RoomUser, RoomUser.room_id == Room.id
+    ).filter(
+        RoomUser.user_id == user.id,
+        RoomUser.room_id == room.id,
+        RoomUser.is_connected == True,
+        Game.room_id == room.id,
+    ).first()
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    return game
 
 
 @router.get("/{code}/start")
